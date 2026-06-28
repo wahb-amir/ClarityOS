@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { timeAgo } from '@/lib/utils'
+import { Zap, Wrench, Rocket, Construction, CheckCircle2, Pin, AlertTriangle, Puzzle, GitBranch, ExternalLink } from 'lucide-react'
 
 interface Project { _id: string; name: string; description: string; clientName: string; status: string; repoUrl?: string; deployUrl?: string; createdAt: string }
 interface Activity { _id: string; type: string; humanText: string; createdAt: string }
@@ -13,12 +14,12 @@ interface Blocker { _id: string; title: string; explanation: string; type: strin
 
 type Tab = 'activity' | 'features' | 'blockers'
 
-const activityIcons: Record<string, string> = {
-  FEATURE_PROGRESS: '⚡',
-  BUG_FIX: '🔧',
-  DEPLOYMENT: '🚀',
-  BLOCKER_CREATED: '🚧',
-  BLOCKER_RESOLVED: '✅',
+const activityIcons: Record<string, React.ReactNode> = {
+  FEATURE_PROGRESS: <Zap className="w-4 h-4" />,
+  BUG_FIX: <Wrench className="w-4 h-4" />,
+  DEPLOYMENT: <Rocket className="w-4 h-4" />,
+  BLOCKER_CREATED: <Construction className="w-4 h-4" />,
+  BLOCKER_RESOLVED: <CheckCircle2 className="w-4 h-4" />,
 }
 
 const itemVariant = { hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: { duration: 0.35, ease: 'easeOut' as const } } }
@@ -71,26 +72,28 @@ export function ProjectClient({ projectId }: { projectId: string }) {
       <div className="mb-8">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand-light font-bold text-lg flex-shrink-0">
-            {project.name[0]}
+            {project.name?.[0] || '?'}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap mb-1">
               <h1 className="text-2xl font-semibold text-text-primary">{project.name}</h1>
               <Badge variant={project.status as 'active'} />
             </div>
-            <p className="text-text-secondary text-sm">{project.clientName} · {project.description}</p>
+            <p className="text-text-primary text-base mt-2 font-medium">{project.clientName} <span className="mx-2 text-text-muted font-normal">•</span> <span className="font-normal text-text-secondary">{project.description}</span></p>
           </div>
         </div>
         {/* Links */}
-        <div className="flex gap-3">
+        <div className="flex gap-4 mt-6">
           {project.repoUrl && (
-            <a href={project.repoUrl} target="_blank" rel="noreferrer" className="text-xs text-text-muted hover:text-brand-light transition-colors flex items-center gap-1">
-              <span>↗</span> Repository
+            <a href={project.repoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-5 py-2.5 bg-bg-surface hover:bg-bg-raised border border-border rounded-xl text-sm font-semibold text-text-primary transition-all shadow-sm hover:shadow-md">
+              <GitBranch className="w-5 h-5" />
+              Repository
             </a>
           )}
           {project.deployUrl && (
-            <a href={project.deployUrl} target="_blank" rel="noreferrer" className="text-xs text-text-muted hover:text-brand-light transition-colors flex items-center gap-1">
-              <span>↗</span> Live Site
+            <a href={project.deployUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-5 py-2.5 bg-brand/10 hover:bg-brand/20 border border-brand/20 rounded-xl text-sm font-semibold text-brand-light transition-all shadow-sm hover:shadow-md">
+              <ExternalLink className="w-5 h-5" />
+              Live Site
             </a>
           )}
         </div>
@@ -98,11 +101,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
 
       {/* Active blocker banner */}
       {activeBlockers.length > 0 && (
-        <div className="mb-6 bg-warning/5 border border-warning/20 rounded-xl p-4 flex items-start gap-3">
-          <span className="text-warning mt-0.5">⚠</span>
+        <div className="mb-6 bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+          <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-warning text-sm font-medium">{activeBlockers.length} active blocker{activeBlockers.length > 1 ? 's' : ''}</p>
-            <p className="text-text-secondary text-xs mt-0.5">{activeBlockers[0].title}</p>
+            <p className="text-warning text-sm font-bold">{activeBlockers.length} active blocker{activeBlockers.length > 1 ? 's' : ''}</p>
+            <p className="text-text-primary text-sm mt-1 font-medium">{activeBlockers[0].title}</p>
           </div>
         </div>
       )}
@@ -131,16 +134,16 @@ export function ProjectClient({ projectId }: { projectId: string }) {
         {tab === 'activity' && (
           <motion.div key="activity" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {activities.length === 0 ? (
-              <EmptyState icon="⚡" text="No activity yet. Activity will appear here as work happens." />
+              <EmptyState icon={<Zap className="w-12 h-12 text-text-muted opacity-80" />} text="No activity yet. Activity will appear here as work happens." />
             ) : (
               <motion.div variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }} initial="hidden" animate="visible" className="space-y-3">
                 {activities.map(a => (
                   <motion.div key={a._id} variants={itemVariant}>
                     <Card className="flex items-start gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-bg-raised flex items-center justify-center text-base flex-shrink-0">{activityIcons[a.type] || '📌'}</div>
+                      <div className="w-8 h-8 rounded-lg bg-bg-raised flex items-center justify-center text-text-primary flex-shrink-0">{activityIcons[a.type] || <Pin className="w-4 h-4" />}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-text-primary text-sm leading-relaxed">{a.humanText}</p>
-                        <p className="text-text-muted text-xs mt-1">{timeAgo(a.createdAt)}</p>
+                        <p className="text-text-primary text-base font-medium leading-relaxed">{a.humanText}</p>
+                        <p className="text-text-muted text-sm mt-1">{timeAgo(a.createdAt)}</p>
                       </div>
                     </Card>
                   </motion.div>
@@ -153,7 +156,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
         {tab === 'features' && (
           <motion.div key="features" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {features.length === 0 ? (
-              <EmptyState icon="🧩" text="No features tracked yet." />
+              <EmptyState icon={<Puzzle className="w-12 h-12 text-brand-light opacity-80" />} text="No features tracked yet." />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {features.map(f => (
@@ -173,7 +176,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
         {tab === 'blockers' && (
           <motion.div key="blockers" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {blockers.length === 0 ? (
-              <EmptyState icon="✅" text="No blockers — everything is moving smoothly." />
+              <EmptyState icon={<CheckCircle2 className="w-12 h-12 text-success opacity-80" />} text="No blockers — everything is moving smoothly." />
             ) : (
               <div className="space-y-3">
                 {blockers.map(b => (
@@ -200,11 +203,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
   )
 }
 
-function EmptyState({ icon, text }: { icon: string; text: string }) {
+function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="text-center py-16">
-      <div className="text-4xl mb-3">{icon}</div>
-      <p className="text-text-muted text-sm">{text}</p>
+      <div className="flex justify-center mb-4">{icon}</div>
+      <p className="text-text-primary text-base font-medium">{text}</p>
     </div>
   )
 }
