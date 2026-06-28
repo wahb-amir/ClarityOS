@@ -10,9 +10,17 @@ export async function GET() {
 
   await connectDB()
 
-  const filter = session.user.role === 'dev'
-    ? {}
-    : { clientId: session.user.id }
+  let filter = {}
+  if (session.user.role !== 'dev') {
+    const user = await import('@/models/User').then(m => m.default.findById(session.user.id).lean())
+    const assignedIds = (user as any)?.assignedProjects || []
+    filter = {
+      $or: [
+        { clientId: session.user.id },
+        { _id: { $in: assignedIds } }
+      ]
+    }
+  }
 
   const projects = await Project.find(filter).sort({ createdAt: -1 }).lean()
   return NextResponse.json(projects)

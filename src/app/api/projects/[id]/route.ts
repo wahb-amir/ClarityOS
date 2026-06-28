@@ -9,8 +9,16 @@ async function getProjectWithAccess(id: string, userId: string, role: string) {
   const project = await Project.findById(id).lean()
   if (!project) return null
   if (role === 'dev') return project
-  if (String((project as { clientId?: unknown }).clientId) !== userId) return null
-  return project
+  
+  const isClient = String((project as { clientId?: unknown }).clientId) === userId
+  if (isClient) return project
+  
+  // Also check assignedProjects array in User model
+  const user = await import('@/models/User').then(m => m.default.findById(userId).lean())
+  const assignedIds = (user as any)?.assignedProjects?.map((pid: any) => String(pid)) || []
+  if (assignedIds.includes(id)) return project
+  
+  return null
 }
 
 export async function GET(req: NextRequest, context: RouteContext) {
