@@ -4,36 +4,67 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { FolderPlus, Activity, Puzzle, AlertOctagon } from 'lucide-react'
+import { DevQuotes } from '@/components/sections/DevQuotes'
+import { FolderPlus, Activity, Puzzle, AlertOctagon, MessageSquare, UserPlus, Settings, Save } from 'lucide-react'
 
-interface Project { _id: string; name: string; clientName: string; status: string }
+interface Project { 
+  _id: string; 
+  name: string; 
+  clientName: string; 
+  description?: string;
+  status: string;
+  repoUrl?: string;
+  deployUrl?: string;
+}
 
 const inputClass = 'w-full bg-bg-raised border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand/50 transition-colors'
 const labelClass = 'block text-xs font-medium text-text-secondary mb-1.5'
 
-type Panel = 'project' | 'activity' | 'feature' | 'blocker'
+type GlobalPanel = 'project' | 'quotes' | 'invite'
+type ProjectTab = 'edit' | 'activity' | 'feature' | 'blocker'
 
 export function AdminClient() {
   const [projects, setProjects] = useState<Project[]>([])
-  const [panel, setPanel] = useState<Panel>('project')
+  const [globalPanel, setGlobalPanel] = useState<GlobalPanel | null>('project')
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
+  const [projectTab, setProjectTab] = useState<ProjectTab>('edit')
+  
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
 
-  // Project form
+  // Forms
   const [pForm, setPForm] = useState({ name: '', description: '', clientName: '', status: 'active', repoUrl: '', deployUrl: '' })
-  // Activity form
-  const [aForm, setAForm] = useState({ projectId: '', type: 'FEATURE_PROGRESS', rawText: '' })
-  // Feature form
-  const [fForm, setFForm] = useState({ projectId: '', name: '', explanation: '', status: 'in_progress' })
-  // Blocker form
-  const [bForm, setBForm] = useState({ projectId: '', title: '', explanation: '', type: 'client_action_required', owner: 'dev' })
+  const [editForm, setEditForm] = useState({ name: '', description: '', status: 'active', repoUrl: '', deployUrl: '' })
+  const [aForm, setAForm] = useState({ type: 'FEATURE_PROGRESS', rawText: '' })
+  const [fForm, setFForm] = useState({ name: '', explanation: '', status: 'in_progress' })
+  const [bForm, setBForm] = useState({ title: '', explanation: '', type: 'client_action_required', owner: 'dev' })
 
   const fetchProjects = useCallback(() => {
     fetch('/api/projects').then(r => r.json()).then(d => setProjects(Array.isArray(d) ? d : []))
   }, [])
+  
   useEffect(() => { fetchProjects() }, [fetchProjects])
 
   const notify = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000) }
+
+  // Select project
+  const handleSelectProject = (p: Project) => {
+    setGlobalPanel(null)
+    setActiveProjectId(p._id)
+    setProjectTab('edit')
+    setEditForm({
+      name: p.name,
+      description: p.description || '',
+      status: p.status,
+      repoUrl: p.repoUrl || '',
+      deployUrl: p.deployUrl || ''
+    })
+  }
+
+  const handleSelectGlobal = (panel: GlobalPanel) => {
+    setActiveProjectId(null)
+    setGlobalPanel(panel)
+  }
 
   const createProject = async () => {
     setLoading(true)
@@ -44,36 +75,49 @@ export function AdminClient() {
     setLoading(false)
   }
 
-  const logActivity = async () => {
+  const updateProject = async () => {
+    if (!activeProjectId) return
     setLoading(true)
-    await fetch(`/api/projects/${aForm.projectId}/activities`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(aForm) })
+    await fetch(`/api/projects/${activeProjectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editForm) })
+    fetchProjects()
+    notify('Project updated!')
+    setLoading(false)
+  }
+
+  const logActivity = async () => {
+    if (!activeProjectId) return
+    setLoading(true)
+    await fetch(`/api/projects/${activeProjectId}/activities`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(aForm) })
     setAForm(f => ({ ...f, rawText: '' }))
     notify('Activity logged!')
     setLoading(false)
   }
 
   const addFeature = async () => {
+    if (!activeProjectId) return
     setLoading(true)
-    await fetch(`/api/projects/${fForm.projectId}/features`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fForm) })
+    await fetch(`/api/projects/${activeProjectId}/features`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fForm) })
     setFForm(f => ({ ...f, name: '', explanation: '' }))
     notify('Feature added!')
     setLoading(false)
   }
 
   const addBlocker = async () => {
+    if (!activeProjectId) return
     setLoading(true)
-    await fetch(`/api/projects/${bForm.projectId}/blockers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bForm) })
+    await fetch(`/api/projects/${activeProjectId}/blockers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bForm) })
     setBForm(f => ({ ...f, title: '', explanation: '' }))
     notify('Blocker logged!')
     setLoading(false)
   }
 
-  const panels = [
-    { id: 'project' as Panel, label: 'New Project', icon: FolderPlus },
-    { id: 'activity' as Panel, label: 'Log Activity', icon: Activity },
-    { id: 'feature' as Panel, label: 'Add Feature', icon: Puzzle },
-    { id: 'blocker' as Panel, label: 'Log Blocker', icon: AlertOctagon },
+  const globalPanels = [
+    { id: 'project' as GlobalPanel, label: 'New Project', icon: FolderPlus },
+    { id: 'quotes' as GlobalPanel, label: 'Quote Requests', icon: MessageSquare },
+    { id: 'invite' as GlobalPanel, label: 'Invite Client', icon: UserPlus },
   ]
+
+  const activeProjectData = projects.find(p => p._id === activeProjectId)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -81,15 +125,16 @@ export function AdminClient() {
       <div className="space-y-4">
         <Card className="p-3">
           <div className="space-y-1">
-            {panels.map(p => {
+            {globalPanels.map(p => {
               const Icon = p.icon
+              const isActive = globalPanel === p.id
               return (
               <button
                 key={p.id}
-                onClick={() => setPanel(p.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${panel === p.id ? 'bg-brand/10 text-brand border border-brand/20 shadow-sm' : 'text-text-secondary hover:text-text-primary hover:bg-bg-raised'}`}
+                onClick={() => handleSelectGlobal(p.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${isActive ? 'bg-brand/10 text-brand border border-brand/20 shadow-sm' : 'text-text-secondary hover:text-text-primary hover:bg-bg-raised'}`}
               >
-                <Icon className={`w-4 h-4 ${panel === p.id ? 'text-brand' : 'text-text-muted'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-brand' : 'text-text-muted'}`} />
                 {p.label}
               </button>
             )})}
@@ -99,15 +144,22 @@ export function AdminClient() {
         <div>
           <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 px-1">Projects ({projects.length})</p>
           <div className="space-y-2">
-            {projects.map(p => (
-              <Card key={p._id} className="py-3 px-4 flex items-center justify-between">
-                <div>
-                  <p className="text-text-primary text-sm font-medium">{p.name}</p>
-                  <p className="text-text-muted text-xs">{p.clientName}</p>
+            {projects.map(p => {
+              const isActive = activeProjectId === p._id
+              return (
+                <div 
+                  key={p._id} 
+                  className={`card py-3 px-4 flex items-center justify-between cursor-pointer transition-colors ${isActive ? 'border-brand ring-1 ring-brand/50 bg-brand/5' : 'hover:border-border-hover hover:bg-bg-raised'}`}
+                  onClick={() => handleSelectProject(p)}
+                >
+                  <div>
+                    <p className="text-text-primary text-sm font-medium">{p.name}</p>
+                    <p className="text-text-muted text-xs">{p.clientName}</p>
+                  </div>
+                  <Badge variant={p.status as 'active'} />
                 </div>
-                <Badge variant={p.status as 'active'} />
-              </Card>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -124,8 +176,8 @@ export function AdminClient() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {panel === 'project' && (
-            <motion.div key="project" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          {globalPanel === 'project' && (
+            <motion.div key="new-project" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
               <Card>
                 <h2 className="text-text-primary font-semibold mb-5">Create New Project</h2>
                 <div className="space-y-4">
@@ -168,116 +220,163 @@ export function AdminClient() {
             </motion.div>
           )}
 
-          {panel === 'activity' && (
-            <motion.div key="activity" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <Card>
-                <h2 className="text-text-primary font-semibold mb-5">Log Developer Activity</h2>
-                <div className="space-y-4">
+          {(globalPanel === 'quotes' || globalPanel === 'invite') && (
+            <motion.div key="quotes-invite" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+              <DevQuotes initialPanel={globalPanel === 'invite' ? 'invite' : 'quotes'} />
+            </motion.div>
+          )}
+
+          {activeProjectId && activeProjectData && (
+            <motion.div key="manage-project" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+              <Card className="mb-4 bg-brand/5 border-brand/20">
+                <div className="flex items-start justify-between">
                   <div>
-                    <label className={labelClass}>Project *</label>
-                    <select className={inputClass} value={aForm.projectId} onChange={e => setAForm(f => ({ ...f, projectId: e.target.value }))}>
-                      <option value="">Select project...</option>
-                      {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                    </select>
+                    <h2 className="text-xl font-semibold text-text-primary">{activeProjectData.name}</h2>
+                    <p className="text-sm text-text-secondary mt-1">Client: <span className="font-medium text-text-primary">{activeProjectData.clientName}</span></p>
                   </div>
-                  <div>
-                    <label className={labelClass}>Activity Type</label>
-                    <select className={inputClass} value={aForm.type} onChange={e => setAForm(f => ({ ...f, type: e.target.value }))}>
-                      <option value="FEATURE_PROGRESS">Feature Progress</option>
-                      <option value="BUG_FIX">Bug Fix</option>
-                      <option value="DEPLOYMENT">Deployment</option>
-                      <option value="BLOCKER_CREATED">Blocker Created</option>
-                      <option value="BLOCKER_RESOLVED">Blocker Resolved</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Developer Note (raw)</label>
-                    <textarea className={inputClass} rows={3} placeholder="e.g. fixed login bug, added payment form..." value={aForm.rawText} onChange={e => setAForm(f => ({ ...f, rawText: e.target.value }))} />
-                    <p className="text-text-muted text-xs mt-1.5">This will be automatically translated into client-friendly language.</p>
-                  </div>
-                  <Button onClick={logActivity} isLoading={loading} disabled={!aForm.projectId || !aForm.rawText}>Log Activity</Button>
+                  <Badge variant={activeProjectData.status as 'active'} />
                 </div>
+              </Card>
+
+              <div className="flex gap-2 mb-4 border-b border-border">
+                <button onClick={() => setProjectTab('edit')} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${projectTab === 'edit' ? 'border-brand text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'}`}>
+                  <div className="flex items-center gap-2"><Settings className="w-4 h-4"/> Settings</div>
+                </button>
+                <button onClick={() => setProjectTab('activity')} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${projectTab === 'activity' ? 'border-brand text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'}`}>
+                  <div className="flex items-center gap-2"><Activity className="w-4 h-4"/> Activity</div>
+                </button>
+                <button onClick={() => setProjectTab('feature')} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${projectTab === 'feature' ? 'border-brand text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'}`}>
+                  <div className="flex items-center gap-2"><Puzzle className="w-4 h-4"/> Feature</div>
+                </button>
+                <button onClick={() => setProjectTab('blocker')} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${projectTab === 'blocker' ? 'border-brand text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'}`}>
+                  <div className="flex items-center gap-2"><AlertOctagon className="w-4 h-4"/> Blocker</div>
+                </button>
+              </div>
+
+              <Card>
+                {projectTab === 'edit' && (
+                  <motion.div key="tab-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <h3 className="font-semibold text-text-primary mb-4">Edit Project Information</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Project Name</label>
+                        <input className={inputClass} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Description</label>
+                        <textarea className={inputClass} rows={3} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}>Status</label>
+                          <select className={inputClass} value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                            <option value="active">Active</option>
+                            <option value="paused">Paused</option>
+                            <option value="waiting_client">Waiting on Client</option>
+                            <option value="delivered">Delivered</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelClass}>Repo URL</label>
+                          <input className={inputClass} value={editForm.repoUrl} onChange={e => setEditForm(f => ({ ...f, repoUrl: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Deploy URL</label>
+                        <input className={inputClass} value={editForm.deployUrl} onChange={e => setEditForm(f => ({ ...f, deployUrl: e.target.value }))} />
+                      </div>
+                      <Button onClick={updateProject} isLoading={loading} className="w-full sm:w-auto"><Save className="w-4 h-4 mr-2"/> Save Changes</Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {projectTab === 'activity' && (
+                  <motion.div key="tab-activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <h3 className="font-semibold text-text-primary mb-4">Log Developer Activity</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Activity Type</label>
+                        <select className={inputClass} value={aForm.type} onChange={e => setAForm(f => ({ ...f, type: e.target.value }))}>
+                          <option value="FEATURE_PROGRESS">Feature Progress</option>
+                          <option value="BUG_FIX">Bug Fix</option>
+                          <option value="DEPLOYMENT">Deployment</option>
+                          <option value="BLOCKER_CREATED">Blocker Created</option>
+                          <option value="BLOCKER_RESOLVED">Blocker Resolved</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Developer Note (raw)</label>
+                        <textarea className={inputClass} rows={3} placeholder="e.g. fixed login bug, added payment form..." value={aForm.rawText} onChange={e => setAForm(f => ({ ...f, rawText: e.target.value }))} />
+                        <p className="text-text-muted text-xs mt-1.5">This will be automatically translated into client-friendly language.</p>
+                      </div>
+                      <Button onClick={logActivity} isLoading={loading} disabled={!aForm.rawText}>Log Activity</Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {projectTab === 'feature' && (
+                  <motion.div key="tab-feature" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <h3 className="font-semibold text-text-primary mb-4">Add Feature Tracker</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Feature Name *</label>
+                        <input className={inputClass} placeholder="e.g. Authentication System" value={fForm.name} onChange={e => setFForm(f => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Client-facing Explanation *</label>
+                        <textarea className={inputClass} rows={2} placeholder="e.g. Allows users to securely log into the platform" value={fForm.explanation} onChange={e => setFForm(f => ({ ...f, explanation: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Status</label>
+                        <select className={inputClass} value={fForm.status} onChange={e => setFForm(f => ({ ...f, status: e.target.value }))}>
+                          <option value="todo">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="review">In Review</option>
+                          <option value="done">Done</option>
+                        </select>
+                      </div>
+                      <Button onClick={addFeature} isLoading={loading} disabled={!fForm.name || !fForm.explanation}>Add Feature</Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {projectTab === 'blocker' && (
+                  <motion.div key="tab-blocker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <h3 className="font-semibold text-text-primary mb-4">Log Blocker</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Blocker Title *</label>
+                        <input className={inputClass} placeholder="e.g. Waiting for API keys from client" value={bForm.title} onChange={e => setBForm(f => ({ ...f, title: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Explanation (client-facing) *</label>
+                        <textarea className={inputClass} rows={2} placeholder="e.g. Payment system cannot proceed until API credentials are provided" value={bForm.explanation} onChange={e => setBForm(f => ({ ...f, explanation: e.target.value }))} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}>Type</label>
+                          <select className={inputClass} value={bForm.type} onChange={e => setBForm(f => ({ ...f, type: e.target.value }))}>
+                            <option value="client_action_required">Client Action Required</option>
+                            <option value="technical_issue">Technical Issue</option>
+                            <option value="external_dependency">External Dependency</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelClass}>Owner</label>
+                          <select className={inputClass} value={bForm.owner} onChange={e => setBForm(f => ({ ...f, owner: e.target.value }))}>
+                            <option value="dev">Developer</option>
+                            <option value="client">Client</option>
+                          </select>
+                        </div>
+                      </div>
+                      <Button onClick={addBlocker} isLoading={loading} disabled={!bForm.title || !bForm.explanation}>Log Blocker</Button>
+                    </div>
+                  </motion.div>
+                )}
               </Card>
             </motion.div>
           )}
 
-          {panel === 'feature' && (
-            <motion.div key="feature" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <Card>
-                <h2 className="text-text-primary font-semibold mb-5">Add Feature</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={labelClass}>Project *</label>
-                    <select className={inputClass} value={fForm.projectId} onChange={e => setFForm(f => ({ ...f, projectId: e.target.value }))}>
-                      <option value="">Select project...</option>
-                      {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Feature Name *</label>
-                    <input className={inputClass} placeholder="e.g. Authentication System" value={fForm.name} onChange={e => setFForm(f => ({ ...f, name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Client-facing Explanation *</label>
-                    <textarea className={inputClass} rows={2} placeholder="e.g. Allows users to securely log into the platform" value={fForm.explanation} onChange={e => setFForm(f => ({ ...f, explanation: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Status</label>
-                    <select className={inputClass} value={fForm.status} onChange={e => setFForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="review">In Review</option>
-                      <option value="done">Done</option>
-                    </select>
-                  </div>
-                  <Button onClick={addFeature} isLoading={loading} disabled={!fForm.projectId || !fForm.name || !fForm.explanation}>Add Feature</Button>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {panel === 'blocker' && (
-            <motion.div key="blocker" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <Card>
-                <h2 className="text-text-primary font-semibold mb-5">Log Blocker</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={labelClass}>Project *</label>
-                    <select className={inputClass} value={bForm.projectId} onChange={e => setBForm(f => ({ ...f, projectId: e.target.value }))}>
-                      <option value="">Select project...</option>
-                      {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Blocker Title *</label>
-                    <input className={inputClass} placeholder="e.g. Waiting for API keys from client" value={bForm.title} onChange={e => setBForm(f => ({ ...f, title: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Explanation (client-facing) *</label>
-                    <textarea className={inputClass} rows={2} placeholder="e.g. Payment system cannot proceed until API credentials are provided" value={bForm.explanation} onChange={e => setBForm(f => ({ ...f, explanation: e.target.value }))} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelClass}>Type</label>
-                      <select className={inputClass} value={bForm.type} onChange={e => setBForm(f => ({ ...f, type: e.target.value }))}>
-                        <option value="client_action_required">Client Action Required</option>
-                        <option value="technical_issue">Technical Issue</option>
-                        <option value="external_dependency">External Dependency</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Owner</label>
-                      <select className={inputClass} value={bForm.owner} onChange={e => setBForm(f => ({ ...f, owner: e.target.value }))}>
-                        <option value="dev">Developer</option>
-                        <option value="client">Client</option>
-                      </select>
-                    </div>
-                  </div>
-                  <Button onClick={addBlocker} isLoading={loading} disabled={!bForm.projectId || !bForm.title || !bForm.explanation}>Log Blocker</Button>
-                </div>
-              </Card>
-            </motion.div>
-          )}
         </AnimatePresence>
       </div>
     </div>
