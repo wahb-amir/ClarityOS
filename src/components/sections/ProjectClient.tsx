@@ -35,7 +35,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
   const fetchAll = useCallback(async () => {
     const [p, a, f, b] = await Promise.all([
       fetch(`/api/projects/${projectId}`).then(r => r.json()),
-      fetch(`/api/projects/${projectId}/activities`).then(r => r.json()),
+      fetch(`/api/projects/${projectId}/activities?published=true`).then(r => r.json()),
       fetch(`/api/projects/${projectId}/features`).then(r => r.json()),
       fetch(`/api/projects/${projectId}/blockers`).then(r => r.json()),
     ])
@@ -46,7 +46,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
     setLoading(false)
   }, [projectId])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => {
+    fetchAll()
+    const interval = setInterval(fetchAll, 60_000)
+    return () => clearInterval(interval)
+  }, [fetchAll])
 
   if (loading) return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
