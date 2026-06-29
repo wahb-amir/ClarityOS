@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
   const rawBody   = await req.text()
 
   let body: {
-    type?: string;
+    type?: string
     payload?: {
-      deployment?: { url?: string; name?: string; state?: string };
-      project?: { id?: string; name?: string };
+      deployment?: { url?: string; name?: string; state?: string }
+      project?:    { id?: string; name?: string }
     }
   }
 
@@ -47,36 +47,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
-  const globalSecret = process.env.VERCEL_WEBHOOK_SECRET
-  if (globalSecret && signature) {
-    if (!verifyVercelSignature(globalSecret, rawBody, signature)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    }
-  }
-
   await connectDB()
 
-  const deployUrl = body.payload?.deployment?.url
-  const projectName = body.payload?.project?.name ?? body.payload?.deployment?.name ?? 'the project'
-  const state = body.payload?.deployment?.state ?? 'UNKNOWN'
+  const vercelProjectId = body.payload?.project?.id
+  const deployUrl       = body.payload?.deployment?.url
+  const projectName     = body.payload?.project?.name ?? body.payload?.deployment?.name ?? 'the project'
+  const state           = body.payload?.deployment?.state ?? 'UNKNOWN'
 
-  // Try to find project by deployUrl
-  const project = deployUrl
-    ? await Project.findOne({ deployUrl: { $regex: deployUrl, $options: 'i' } }).lean()
+  // 1. Match primarily by vercelProjectId (accurate — set when project is linked)
+  // 2. Fall back to deployUrl regex match for manually configured projects
+  let project = vercelProjectId
+    ? await Project.findOne({ vercelProjectId }).lean()
     : null
 
-  const humanText = translateDeployment(state, projectName)
-  const type: 'DEPLOYMENT' = 'DEPLOYMENT'
-
-  if (project) {
-    await Activity.create({
-      projectId: (project as { _id: unknown })._id,
-      type,
-      rawText: `deployment.${state.toLowerCase()}`,
-      humanText,
-      metadata: { state, source: 'vercel', deployUrl: deployUrl ?? '' },
-    })
+  if (!project && deployUrl) {
+    // Regex fallback — escape the URL for safe regex use
+    const escaped = deployUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    project = await Project.findOne({ deployUrl: { $regex: escaped, $options: 'i' } }).lean()
   }
+
+  if (!project) {
+    console.warn(`[vercel webhook] No project matched — vercelProjectId: ${vercelProjectId}, deployUrl: ${deployUrl}`)
+    // Return 200 to prevent Vercel from retrying; we just log the miss
+    return NextResponse.json({ ok: true, warning: 'No matching project found' })
+  }
+
+  // Verify signature using per-project secret
+  const secret = (project as { webhookSecret?: string }).webhookSecret
+    ?? process.env.VERCEL_WEBHOOK_SECRET
+
+  if (!secret) {
+    console.warn('[vercel webhook] No webhook secret configured — skipping signature check')
+  } else if (signature && !verifyVercelSignature(secret, rawBody, signature)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  // Update last event timestamp
+  await Project.updateOne(
+    { _id: (project as { _id: unknown })._id },
+    { $set: { 'integrations.vercel.lastEventAt': new Date(), 'integrations.vercel.status': 'linked' } }
+  )
+
+  const humanText = translateDeployment(state, projectName)
+
+  await Activity.create({
+    projectId: (project as { _id: unknown })._id,
+    type:      'DEPLOYMENT' as const,
+    rawText:   `deployment.${state.toLowerCase()}`,
+    humanText,
+    published: false,  // deployment activities also go into the review queue
+    internal:  false,
+    metadata:  { state, source: 'vercel', deployUrl: deployUrl ?? '', vercelProjectId: vercelProjectId ?? '' },
+  })
 
   return NextResponse.json({ ok: true })
 }

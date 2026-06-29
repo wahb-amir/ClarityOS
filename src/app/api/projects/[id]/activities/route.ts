@@ -15,7 +15,24 @@ export async function GET(req: NextRequest, context: RouteContext) {
   const { searchParams } = new URL(req.url)
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
 
-  const activities = await Activity.find({ projectId: id })
+  // Clients only ever see published activities.
+  // Devs can request published=false to see the review queue.
+  const publishedParam = searchParams.get('published')
+  const isDev = session.user.role === 'dev'
+
+  let publishedFilter: boolean | undefined
+  if (publishedParam === 'false' && isDev) {
+    publishedFilter = false  // dev viewing review queue
+  } else if (publishedParam === 'all' && isDev) {
+    publishedFilter = undefined  // dev seeing everything
+  } else {
+    publishedFilter = true  // default: only published (clients always land here)
+  }
+
+  const query: Record<string, unknown> = { projectId: id }
+  if (publishedFilter !== undefined) query.published = publishedFilter
+
+  const activities = await Activity.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean()
@@ -38,6 +55,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   const humanText = body.humanText || translateActivity(body.rawText)
-  const activity = await Activity.create({ ...body, projectId: id, humanText })
+  // Manual dev logs are published immediately (trusted source)
+  const activity = await Activity.create({
+    ...body,
+    projectId: id,
+    humanText,
+    published: true,
+    internal: false,
+  })
   return NextResponse.json(activity, { status: 201 })
 }
