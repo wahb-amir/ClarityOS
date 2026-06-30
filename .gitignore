@@ -32,8 +32,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-*.next*
+/.next/
 
 .mcp_backups*
 
+!/[...nextauth]/
 keys*
