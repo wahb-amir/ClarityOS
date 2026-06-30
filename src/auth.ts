@@ -7,31 +7,8 @@ import { comparePassword } from "@/lib/auth/hash";
 
 import { authConfig } from "./auth.config";
 
-console.log("ENV CHECK:");
-console.log("NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
-console.log("AUTH_GOOGLE_ID:", !!process.env.AUTH_GOOGLE_ID);
-console.log("AUTH_GOOGLE_SECRET:", !!process.env.AUTH_GOOGLE_SECRET);
-console.log("MONGODB_URI:", !!process.env.MONGODB_URI);
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  debug: true,
-
-  logger: {
-    error(error) {
-      console.error("❌ NEXTAUTH ERROR:", {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-      });
-    },
-    warn(message) {
-      console.warn("⚠️ NEXTAUTH WARN:", message);
-    },
-    debug(message) {
-      console.log("🧪 NEXTAUTH DEBUG:", message);
-    },
-  },
   trustHost: true,
   providers: [
     Google({
