@@ -46,21 +46,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user, account }) {
       // OAuth sign-in: upsert user with role=client
-      if (account?.provider === 'google') {
-        await connectDB()
-        const existing = await User.findOne({ email: user.email!.toLowerCase() })
-        if (!existing) {
-          await User.create({
-            name:          user.name,
-            email:         user.email!.toLowerCase(),
-            role:          'client',
-            emailVerified: true, // Google handles identity
-            image:         user.image,
-          })
-        } else if (!existing.image && user.image) {
-          await User.updateOne({ email: user.email!.toLowerCase() }, { image: user.image })
-        }
-      }
+      // if (account?.provider === 'google') {
+      //   await connectDB()
+      //   const existing = await User.findOne({ email: user.email!.toLowerCase() })
+      //   if (!existing) {
+      //     await User.create({
+      //       name:          user.name,
+      //       email:         user.email!.toLowerCase(),
+      //       role:          'client',
+      //       emailVerified: true, // Google handles identity
+      //       image:         user.image,
+      //     })
+      //   } else if (!existing.image && user.image) {
+      //     await User.updateOne({ email: user.email!.toLowerCase() }, { image: user.image })
+      //   }
+      // }
       return true
     },
 
