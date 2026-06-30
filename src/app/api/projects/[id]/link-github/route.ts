@@ -34,7 +34,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   const token = (integration as { accessToken: string }).accessToken
-
   // Generate a fresh per-project webhook secret
   const webhookSecret = crypto.randomBytes(32).toString('hex')
 
