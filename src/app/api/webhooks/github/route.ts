@@ -93,10 +93,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Verify HMAC signature using per-project secret, with global fallback
   const secret =
-    (project as { webhookSecret?: string }).webhookSecret ??
-    process.env.GITHUB_WEBHOOK_SECRET;
+    (project as { webhookSecret?: string }).webhookSecret
 
   if (!secret) {
     console.warn(

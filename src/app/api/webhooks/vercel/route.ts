@@ -100,8 +100,7 @@ export async function POST(req: NextRequest) {
 
   // Verify signature using per-project secret
   const secret =
-    (project as { webhookSecret?: string }).webhookSecret ??
-    process.env.VERCEL_WEBHOOK_SECRET;
+    (project as { webhookSecret?: string }).webhookSecret 
 
   if (!secret) {
     console.warn(
