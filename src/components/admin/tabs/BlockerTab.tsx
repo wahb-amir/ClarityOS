@@ -54,6 +54,7 @@ export function BlockerTab({ projectId, onNotify }: { projectId: string; onNotif
               <option value="client_action_required">Client Action Required</option>
               <option value="technical_issue">Technical Issue</option>
               <option value="external_dependency">External Dependency</option>
+              <option value="payment_blocker">💳 Payment Blocker</option>
             </select>
           </div>
           <div>

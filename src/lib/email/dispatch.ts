@@ -12,6 +12,7 @@ import { connectDB } from '@/lib/db/mongoose'
 import EmailVerificationToken from '@/models/EmailVerificationToken'
 import ProjectInvite from '@/models/ProjectInvite'
 import User from '@/models/User'
+import Project from '@/models/Project'
 import { sendMail } from './sender'
 import {
   verificationEmailHtml,
@@ -22,6 +23,8 @@ import {
   quoteReplyEmailText,
   projectInviteEmailHtml,
   projectInviteEmailText,
+  blockerNotificationEmailHtml,
+  blockerNotificationEmailText,
 } from './templates'
 
 // Backoff delays in milliseconds
@@ -218,7 +221,7 @@ export async function createAndDispatchProjectInvite(opts: {
   projectName: string
   targetEmail: string
   sendEmail?: boolean
-}): Promise<{ inviteUrl: string }> {
+}): Promise<{ inviteUrl: string; emailSent: boolean; emailError?: string }> {
   await connectDB()
 
   const targetEmail = opts.targetEmail.toLowerCase().trim()
@@ -230,16 +233,11 @@ export async function createAndDispatchProjectInvite(opts: {
   )
 
   const raw = generateRawToken()
-  await ProjectInvite.create({
-    projectId: opts.projectId,
-    email:     targetEmail,
-    tokenHash: hashToken(raw),
-    status:    'pending',
-    expiresAt: new Date(Date.now() + INVITE_TTL_MS),
-  })
-
   const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const inviteUrl = `${APP_URL}/invite?token=${encodeURIComponent(raw)}`
+
+  let emailSent = false
+  let emailError: string | undefined
 
   if (opts.sendEmail !== false) {
     // Try to find a name for personalisation
@@ -253,12 +251,24 @@ export async function createAndDispatchProjectInvite(opts: {
         html:    projectInviteEmailHtml(clientName, opts.projectName, raw, targetEmail),
         text:    projectInviteEmailText(clientName, opts.projectName, raw, targetEmail),
       })
-    } catch (err) {
+      emailSent = true
+    } catch (err: any) {
       console.error('[email-dispatch] Failed to send project invite email:', err)
+      emailError = err?.message || String(err)
     }
   }
 
-  return { inviteUrl }
+  await ProjectInvite.create({
+    projectId: opts.projectId,
+    email:     targetEmail,
+    tokenHash: hashToken(raw),
+    status:    'pending',
+    expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+    emailSent,
+    emailError
+  })
+
+  return { inviteUrl, emailSent, emailError }
 }
 
 /**
@@ -292,4 +302,48 @@ export async function acceptProjectInvite(opts: {
   await ProjectInvite.findByIdAndUpdate(invite._id, { status: 'accepted' })
 
   return { projectId: String(invite.projectId) }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BLOCKER NOTIFICATIONS
+───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Fire-and-forget: notify the client by email whenever a new blocker is logged
+ * on one of their projects, so they're never left in the dark.
+ */
+export async function dispatchBlockerNotification(opts: {
+  projectId: string
+  blockerTitle: string
+  explanation: string
+  type: string
+}): Promise<void> {
+  try {
+    await connectDB()
+
+    const project = await Project.findById(opts.projectId).lean() as {
+      name: string
+      clientId?: string
+    } | null
+    if (!project?.clientId) return
+
+    const client = await User.findById(project.clientId).lean() as {
+      name?: string
+      email?: string
+    } | null
+    if (!client?.email) return
+
+    await sendMail({
+      to:      client.email,
+      subject: `Blocker on "${project.name}" — ClarityOS`,
+      html:    blockerNotificationEmailHtml(
+        client.name ?? '', project.name, opts.blockerTitle, opts.explanation, opts.type, opts.projectId
+      ),
+      text:    blockerNotificationEmailText(
+        client.name ?? '', project.name, opts.blockerTitle, opts.explanation, opts.type, opts.projectId
+      ),
+    })
+  } catch (err) {
+    console.error('[email-dispatch] Failed to send blocker notification:', err)
+  }
 }

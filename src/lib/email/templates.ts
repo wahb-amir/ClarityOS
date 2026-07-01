@@ -203,3 +203,66 @@ export function projectInviteEmailText(
   const inviteUrl = `${APP_URL}/invite?token=${encodeURIComponent(rawToken)}`
   return `Hi ${clientName || 'there'},\n\nYou've been invited to the project "${projectName}".\n\nAccept your invitation:\n${inviteUrl}\n\nThis link is exclusively bound to ${targetEmail} and expires in 7 days.\n\nIf you did not expect this, ignore this email.`
 }
+
+/* ─── Blocker Notification Email (to Client) ─────────────────── */
+
+const BLOCKER_TYPE_LABELS: Record<string, string> = {
+  client_action_required: 'Action Required from You',
+  technical_issue:        'Technical Issue',
+  external_dependency:    'External Dependency',
+  payment_blocker:        'Payment Blocker',
+}
+
+export function blockerNotificationEmailHtml(
+  clientName: string,
+  projectName: string,
+  blockerTitle: string,
+  explanation: string,
+  type: string,
+  projectId: string
+): string {
+  const projectUrl = `${APP_URL}/project/${projectId}`
+  const typeLabel = BLOCKER_TYPE_LABELS[type] ?? 'Blocker'
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Blocker — ClarityOS</title>
+  <style>${BASE_STYLES}</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="logo">ClarityOS</div>
+      <h1>A blocker was logged on "${projectName}"</h1>
+      <p>Hi ${clientName || 'there'}, the dev team has flagged something that's currently blocking progress on your project.</p>
+      <div class="info-box">
+        <div class="meta-row"><span class="meta-label">Type</span><span class="meta-value">${typeLabel}</span></div>
+        <div class="meta-row"><span class="meta-label">Title</span><span class="meta-value">${blockerTitle}</span></div>
+      </div>
+      <p>${explanation.replace(/\n/g, '<br />')}</p>
+      <a href="${projectUrl}" class="btn">View Project</a>
+      <hr class="divider" />
+      <p class="link-text">Or open: ${projectUrl}</p>
+    </div>
+    <div class="footer">
+      © ${new Date().getFullYear()} ClarityOS — You are receiving this because you are the client on this project.
+    </div>
+  </div>
+</body>
+</html>`
+}
+
+export function blockerNotificationEmailText(
+  clientName: string,
+  projectName: string,
+  blockerTitle: string,
+  explanation: string,
+  type: string,
+  projectId: string
+): string {
+  const projectUrl = `${APP_URL}/project/${projectId}`
+  const typeLabel = BLOCKER_TYPE_LABELS[type] ?? 'Blocker'
+  return `Hi ${clientName || 'there'},\n\nA blocker was logged on your project "${projectName}":\n\nType: ${typeLabel}\nTitle: ${blockerTitle}\n\n${explanation}\n\nView your project: ${projectUrl}`
+}
