@@ -1,74 +1,87 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { inputClass, labelClass } from '@/types/admin'
-import { IntegrationsPanel } from '../sections/IntegrationsPanel'
-import type { Project } from '@/types/admin'
+import { useState } from "react";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { inputClass, labelClass } from "@/types/admin";
+import { IntegrationsPanel } from "../sections/IntegrationsPanel";
+import type { Project } from "@/types/admin";
 
 interface CreateProjectPanelProps {
-  onNotify: (msg: string) => void
-  onSuccess: () => void
+  onNotify: (msg: string) => void;
+  onSuccess: () => void;
 }
 
-export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelProps) {
-  const [loading, setLoading] = useState(false)
+export function CreateProjectPanel({
+  onNotify,
+  onSuccess,
+}: CreateProjectPanelProps) {
+  const [loading, setLoading] = useState(false);
   const [pForm, setPForm] = useState({
-    name: '',
-    description: '',
-    status: 'active',
-    repoUrl: '',
-    deployUrl: '',
-    vercelProjectId: '' // Added to match IntegrationsProjectData definition
-  })
+    name: "",
+    description: "",
+    status: "active",
+    repoUrl: "",
+    deployUrl: "",
+    vercelProjectId: "", // Added to match IntegrationsProjectData definition
+  });
 
   // Once the project is saved, we hold onto the real record here so
   // IntegrationsPanel has an actual _id to link webhooks against.
-  const [createdProject, setCreatedProject] = useState<Project | null>(null)
+  const [createdProject, setCreatedProject] = useState<Project | null>(null);
 
   const createProject = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pForm)
-      })
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pForm),
+      });
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        onNotify(d?.error ?? 'Failed to create project')
-        return
+        const d = await res.json().catch(() => ({}));
+        onNotify(d?.error ?? "Failed to create project");
+        return;
       }
-      const project = (await res.json()) as Project
-      setCreatedProject(project)
-      onSuccess()
-      onNotify('Project created! You can now link GitHub/Vercel below.')
+      const project = (await res.json()) as Project;
+      setCreatedProject(project);
+      onSuccess();
+      onNotify("Project created! You can now link GitHub/Vercel below.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const finishAndReset = () => {
-    setPForm({ name: '', description: '', status: 'active', repoUrl: '', deployUrl: '', vercelProjectId: '' })
-    setCreatedProject(null)
-  }
+    setPForm({
+      name: "",
+      description: "",
+      status: "active",
+      repoUrl: "",
+      deployUrl: "",
+      vercelProjectId: "",
+    });
+    setCreatedProject(null);
+  };
 
   // ── Stage 2: project exists — show real integration linking ──
   if (createdProject) {
     return (
       <Card>
-        <h2 className="text-text-primary font-semibold mb-1">Project Created</h2>
+        <h2 className="text-text-primary font-semibold mb-1">
+          Project Created
+        </h2>
         <p className="text-xs text-text-muted mb-5">
-          “{createdProject.name}” is saved. Optionally link GitHub/Vercel now, or do it later from Project Settings.
+          “{createdProject.name}” is saved. Optionally link GitHub/Vercel now,
+          or do it later from Project Settings.
         </p>
 
         <IntegrationsPanel
           projectId={createdProject._id}
           projectData={createdProject}
           onSaved={() => {
-            onNotify('Integration linked!')
-            onSuccess()
+            onNotify("Integration linked!");
+            onSuccess();
           }}
         />
 
@@ -78,15 +91,16 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
           </Button>
         </div>
       </Card>
-    )
+    );
   }
 
   // ── Stage 1: collect basic project info ──
   return (
     <Card>
-      <h2 className="text-text-primary font-semibold mb-5">Create New Project</h2>
+      <h2 className="text-text-primary font-semibold mb-5">
+        Create New Project
+      </h2>
       <div className="space-y-6">
-
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label className={labelClass}>Project Name *</label>
@@ -94,7 +108,9 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
               className={inputClass}
               placeholder="e.g. E-commerce Platform"
               value={pForm.name}
-              onChange={e => setPForm(f => ({ ...f, name: e.target.value }))}
+              onChange={(e) =>
+                setPForm((f) => ({ ...f, name: e.target.value }))
+              }
             />
           </div>
         </div>
@@ -106,7 +122,9 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
             rows={3}
             placeholder="Brief description of the project..."
             value={pForm.description}
-            onChange={e => setPForm(f => ({ ...f, description: e.target.value }))}
+            onChange={(e) =>
+              setPForm((f) => ({ ...f, description: e.target.value }))
+            }
           />
         </div>
 
@@ -115,7 +133,9 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
           <select
             className={inputClass}
             value={pForm.status}
-            onChange={e => setPForm(f => ({ ...f, status: e.target.value }))}
+            onChange={(e) =>
+              setPForm((f) => ({ ...f, status: e.target.value }))
+            }
           >
             <option value="active">Active</option>
             <option value="paused">Paused</option>
@@ -130,7 +150,8 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
         <div className="pt-4 border-t border-border">
           <label className={labelClass}>Integrations</label>
           <p className="text-xs text-text-muted mb-4">
-            Optional. You'll be able to link GitHub/Vercel with live webhook creation right after saving.
+            Optional. You'll be able to link GitHub/Vercel with live webhook
+            creation right after saving.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -139,7 +160,9 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
                 className={inputClass}
                 placeholder="https://github.com/org/repo"
                 value={pForm.repoUrl}
-                onChange={e => setPForm(f => ({ ...f, repoUrl: e.target.value }))}
+                onChange={(e) =>
+                  setPForm((f) => ({ ...f, repoUrl: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -148,7 +171,9 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
                 className={inputClass}
                 placeholder="https://myproject.vercel.app"
                 value={pForm.deployUrl}
-                onChange={e => setPForm(f => ({ ...f, deployUrl: e.target.value }))}
+                onChange={(e) =>
+                  setPForm((f) => ({ ...f, deployUrl: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -166,5 +191,5 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
         </div>
       </div>
     </Card>
-  )
+  );
 }

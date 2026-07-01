@@ -1,32 +1,33 @@
-'use client'
+"use client";
 
-import * as React from 'react'
+import * as React from "react";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  hint?: string
-  error?: string
+  label?: string;
+  hint?: string;
+  error?: string;
   /** Falls back to name or a generated id when not provided */
-  id?: string
+  id?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, id, className = '', ...props }, ref) => {
+  ({ label, hint, error, id, className = "", ...props }, ref) => {
     // Derive a stable id from label/name when not supplied
     const resolvedId =
       id ??
       (label
-        ? `input-${label.toLowerCase().replace(/\s+/g, '-')}`
+        ? `input-${label.toLowerCase().replace(/\s+/g, "-")}`
         : props.name
           ? `input-${props.name}`
-          : undefined)
+          : undefined);
 
-    const hintId  = resolvedId ? `${resolvedId}-hint`  : undefined
-    const errorId = resolvedId ? `${resolvedId}-error` : undefined
+    const hintId = resolvedId ? `${resolvedId}-hint` : undefined;
+    const errorId = resolvedId ? `${resolvedId}-error` : undefined;
 
-    const describedBy = [error ? errorId : undefined, hint ? hintId : undefined]
-      .filter(Boolean)
-      .join(' ') || undefined
+    const describedBy =
+      [error ? errorId : undefined, hint ? hintId : undefined]
+        .filter(Boolean)
+        .join(" ") || undefined;
 
     return (
       <div className="flex flex-col gap-1 w-full">
@@ -45,14 +46,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
           className={[
-            'input-base',
+            "input-base",
             error
-              ? 'border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(220,38,38,0.12)]'
-              : '',
+              ? "border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(220,38,38,0.12)]"
+              : "",
             className,
           ]
             .filter(Boolean)
-            .join(' ')}
+            .join(" ")}
           {...props}
         />
 
@@ -80,11 +81,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </p>
         )}
       </div>
-    )
+    );
   },
-)
+);
 
-Input.displayName = 'Input'
+Input.displayName = "Input";
 
-export { Input }
-export type { InputProps }
+export { Input };
+export type { InputProps };

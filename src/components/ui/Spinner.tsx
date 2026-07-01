@@ -1,27 +1,27 @@
-import * as React from 'react'
+import * as React from "react";
 
-type SpinnerSize = 'sm' | 'md' | 'lg'
+type SpinnerSize = "sm" | "md" | "lg";
 
 interface SpinnerProps {
-  size?: SpinnerSize
-  color?: string
-  className?: string
-  label?: string
+  size?: SpinnerSize;
+  color?: string;
+  className?: string;
+  label?: string;
 }
 
 const sizeMap: Record<SpinnerSize, number> = {
   sm: 16,
   md: 20,
   lg: 32,
-}
+};
 
 function Spinner({
-  size = 'md',
-  color = 'currentColor',
-  className = '',
-  label = 'Loading…',
+  size = "md",
+  color = "currentColor",
+  className = "",
+  label = "Loading…",
 }: SpinnerProps) {
-  const px = sizeMap[size]
+  const px = sizeMap[size];
 
   return (
     <svg
@@ -51,8 +51,8 @@ function Spinner({
         className="opacity-80"
       />
     </svg>
-  )
+  );
 }
 
-export { Spinner }
-export type { SpinnerProps, SpinnerSize }
+export { Spinner };
+export type { SpinnerProps, SpinnerSize };

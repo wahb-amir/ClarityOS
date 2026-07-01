@@ -84,8 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }).lean();
         if (dbUser) {
           token.role = (dbUser as { role: "client" | "dev" }).role as
-            | "client"
-            | "dev";
+            "client" | "dev";
           token.id = String((dbUser as { _id: unknown })._id);
         }
       }

@@ -2,35 +2,67 @@
 @config "../../tailwind.config.ts";
 
 @layer base {
-  *, *::before, *::after { box-sizing: border-box; }
-  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
 
   body {
-    background-color: #F8F9FC;
-    color: #18181B;
-    font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+    background-color: #f8f9fc;
+    color: #18181b;
+    font-family:
+      var(--font-geist),
+      system-ui,
+      -apple-system,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
-  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
 
   /* Selection */
-  ::selection { background: rgba(37, 99, 235, 0.12); color: #18181B; }
+  ::selection {
+    background: rgba(37, 99, 235, 0.12);
+    color: #18181b;
+  }
 
   /* Focus visible */
-  :focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
 
   /* Links */
-  a { color: inherit; text-decoration: none; }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
   /* Inputs reset */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-family: inherit;
     font-size: inherit;
   }
@@ -53,29 +85,31 @@
 }
 
 @utility card {
-  background: #FFFFFF;
-  border: 1px solid #E4E4E7;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px -1px rgba(0, 0, 0, 0.04);
   padding: 1.25rem;
 }
 
 @utility text-gradient {
-  background: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 @utility text-gradient-subtle {
-  background: linear-gradient(135deg, #18181B 0%, #52525B 100%);
+  background: linear-gradient(135deg, #18181b 0%, #52525b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 @utility shimmer-bg {
-  background: linear-gradient(90deg, #F1F3F7 25%, #E4E4E7 50%, #F1F3F7 75%);
+  background: linear-gradient(90deg, #f1f3f7 25%, #e4e4e7 50%, #f1f3f7 75%);
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
@@ -88,24 +122,28 @@
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #52525B;
-  transition: background 0.1s ease, color 0.1s ease;
+  color: #52525b;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
 }
 
 @utility sidebar-link-active {
-  background: #EFF6FF;
-  color: #2563EB;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 @utility input-base {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  background: #FFFFFF;
-  border: 1px solid #E4E4E7;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
   border-radius: 0.5rem;
   font-size: 0.875rem;
-  color: #18181B;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  color: #18181b;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   outline: none;
 }
 

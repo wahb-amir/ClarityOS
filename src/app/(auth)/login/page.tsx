@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useState, type FormEvent } from 'react'
-import { signIn } from 'next-auth/react'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
+import { useState, type FormEvent } from "react";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 /* ── Google SVG icon ─────────────────────────────────────── */
 function GoogleIcon() {
@@ -33,11 +33,11 @@ function GoogleIcon() {
         fill="#EA4335"
       />
     </svg>
-  )
+  );
 }
 
 /* ── Spinner ─────────────────────────────────────────────── */
-function Spinner({ className = '' }: { className?: string }) {
+function Spinner({ className = "" }: { className?: string }) {
   return (
     <svg
       className={`animate-spin ${className}`}
@@ -60,83 +60,86 @@ function Spinner({ className = '' }: { className?: string }) {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4Z"
       />
     </svg>
-  )
+  );
 }
 
 type ErrorState =
-  | { type: 'credentials' }
-  | { type: 'email_not_verified' }
-  | { type: 'generic'; message: string }
-  | null
+  | { type: "credentials" }
+  | { type: "email_not_verified" }
+  | { type: "generic"; message: string }
+  | null;
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [email, setEmail]         = useState('')
-  const [password, setPassword]   = useState('')
-  const [loading, setLoading]     = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-  const [error, setError]         = useState<ErrorState>(null)
-  const [resendSent, setResendSent] = useState(false)
-  const [resendLoading, setResendLoading] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<ErrorState>(null);
+  const [resendSent, setResendSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   /* ── Email / password sign-in ────────────────────────── */
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
-      })
+      });
 
       if (!result) {
-        setError({ type: 'generic', message: 'Something went wrong. Please try again.' })
-        return
+        setError({
+          type: "generic",
+          message: "Something went wrong. Please try again.",
+        });
+        return;
       }
 
-      if (result.error === 'EMAIL_NOT_VERIFIED') {
-        setError({ type: 'email_not_verified' })
-        return
+      if (result.error === "EMAIL_NOT_VERIFIED") {
+        setError({ type: "email_not_verified" });
+        return;
       }
 
       if (result.error) {
-        setError({ type: 'credentials' })
-        return
+        setError({ type: "credentials" });
+        return;
       }
 
       // Success — navigate to dashboard
-      router.push('/dashboard')
-      router.refresh()
+      router.push("/dashboard");
+      router.refresh();
     } catch {
-      setError({ type: 'generic', message: 'An unexpected error occurred.' })
+      setError({ type: "generic", message: "An unexpected error occurred." });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   /* ── Google sign-in ──────────────────────────────────── */
   async function handleGoogle() {
-    setGoogleLoading(true)
-    await signIn('google', { callbackUrl: '/dashboard' })
+    setGoogleLoading(true);
+    await signIn("google", { callbackUrl: "/dashboard" });
   }
 
   /* ── Resend verification ──────────────────────────────── */
   async function handleResend() {
-    if (!email) return
-    setResendLoading(true)
+    if (!email) return;
+    setResendLoading(true);
     try {
-      await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
-      })
-      setResendSent(true)
+      });
+      setResendSent(true);
     } finally {
-      setResendLoading(false)
+      setResendLoading(false);
     }
   }
 
@@ -144,7 +147,7 @@ export default function LoginPage() {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className="card p-8 w-full"
     >
       {/* Heading */}
@@ -175,7 +178,9 @@ export default function LoginPage() {
       {/* Divider */}
       <div className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-text-muted font-medium">or continue with email</span>
+        <span className="text-xs text-text-muted font-medium">
+          or continue with email
+        </span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
@@ -227,12 +232,15 @@ export default function LoginPage() {
             role="alert"
             className="rounded-lg bg-danger-light border border-danger-muted px-3.5 py-3 text-sm text-danger space-y-1.5"
           >
-            {error.type === 'credentials' && (
+            {error.type === "credentials" && (
               <p>Invalid email or password. Please try again.</p>
             )}
-            {error.type === 'email_not_verified' && (
+            {error.type === "email_not_verified" && (
               <>
-                <p>Email not verified — check your inbox for the verification link.</p>
+                <p>
+                  Email not verified — check your inbox for the verification
+                  link.
+                </p>
                 {resendSent ? (
                   <p className="text-success font-medium">
                     ✓ Verification email resent!
@@ -244,12 +252,12 @@ export default function LoginPage() {
                     disabled={resendLoading || !email}
                     className="underline underline-offset-2 text-danger font-medium hover:opacity-75 transition-opacity disabled:opacity-50"
                   >
-                    {resendLoading ? 'Sending…' : 'Resend verification email'}
+                    {resendLoading ? "Sending…" : "Resend verification email"}
                   </button>
                 )}
               </>
             )}
-            {error.type === 'generic' && <p>{error.message}</p>}
+            {error.type === "generic" && <p>{error.message}</p>}
           </div>
         )}
 
@@ -265,14 +273,14 @@ export default function LoginPage() {
               Signing in…
             </>
           ) : (
-            'Sign in'
+            "Sign in"
           )}
         </button>
       </form>
 
       {/* Register link */}
       <p className="mt-5 text-center text-sm text-text-secondary">
-        Don&apos;t have an account?{' '}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="font-medium text-brand hover:underline underline-offset-2 transition-colors"
@@ -281,5 +289,5 @@ export default function LoginPage() {
         </Link>
       </p>
     </motion.div>
-  )
+  );
 }

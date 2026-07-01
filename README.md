@@ -7,9 +7,9 @@
 [Getting Started](#-getting-started) • [Webhook
 Integration](#-webhook-integration)
 
-------------------------------------------------------------------------
+---
 
-> *"If the client needs to ask for an update, the system has failed."*
+> _"If the client needs to ask for an update, the system has failed."_
 >
 > Clients don't want more communication. They want less uncertainty.
 > ClarityOS translates your technical work into language clients
@@ -17,40 +17,42 @@ Integration](#-webhook-integration)
 
 ## ✨ Features
 
--   ⚡ **Activity Translation** --- Converts commits and deployments
-    into plain English.
--   🚧 **Blocker Transparency** --- Explains delays and who needs to
-    take action.
--   🎯 **Feature Tracker** --- Tracks progress using client-friendly
-    language.
--   🤝 **Automated Client Invites** --- Invite clients to their
-    dashboard automatically.
--   🔗 **GitHub Integration** --- Converts GitHub activity into readable
-    updates.
+- ⚡ **Activity Translation** --- Converts commits and deployments
+  into plain English.
+- 🚧 **Blocker Transparency** --- Explains delays and who needs to
+  take action.
+- 🎯 **Feature Tracker** --- Tracks progress using client-friendly
+  language.
+- 🤝 **Automated Client Invites** --- Invite clients to their
+  dashboard automatically.
+- 🔗 **GitHub Integration** --- Converts GitHub activity into readable
+  updates.
 
 ## 🛠 Tech Stack
 
-  Category         Technology
-  ---------------- ---------------------------------------------
-  Framework        Next.js 16 (App Router)
-  Language         TypeScript
-  Styling          Tailwind CSS, Framer Motion
-  Database         MongoDB + Mongoose
-  Authentication   NextAuth.js v5 (Google OAuth & Magic Links)
-  Email            Nodemailer
+Category Technology
+
+---
+
+Framework Next.js 16 (App Router)
+Language TypeScript
+Styling Tailwind CSS, Framer Motion
+Database MongoDB + Mongoose
+Authentication NextAuth.js v5 (Google OAuth & Magic Links)
+Email Nodemailer
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
--   Node.js 18+
--   pnpm
--   MongoDB (Local or Atlas)
--   Google Cloud Project (OAuth)
+- Node.js 18+
+- pnpm
+- MongoDB (Local or Atlas)
+- Google Cloud Project (OAuth)
 
 ### 1. Clone the repository
 
-``` bash
+```bash
 git clone <your-repo-url>
 cd clarityos
 pnpm install
@@ -60,13 +62,13 @@ pnpm install
 
 Copy the example file:
 
-``` bash
+```bash
 cp .env.example .env.local
 ```
 
 Fill in your `.env.local`:
 
-``` env
+```env
 # ============================================================
 # Database
 # ============================================================
@@ -112,7 +114,7 @@ VERCEL_WEBHOOK_SECRET=
 
 ### 3. Start the development server
 
-``` bash
+```bash
 pnpm dev
 ```
 
@@ -125,19 +127,19 @@ Open <http://localhost:3000>.
 1.  Go to **Repository → Settings → Webhooks → Add webhook**
 2.  Payload URL:
 
-``` text
+```text
 https://yourdomain.com/api/webhooks/github
 ```
 
 3.  Content Type:
 
-``` text
+```text
 application/json
 ```
 
 4.  Set the webhook secret to match:
 
-``` env
+```env
 GITHUB_WEBHOOK_SECRET
 ```
 
@@ -146,7 +148,7 @@ GITHUB_WEBHOOK_SECRET
 
 ## 📂 Project Structure
 
-``` text
+```text
 src/
 ├── app
 │   ├── admin

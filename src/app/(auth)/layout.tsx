@@ -1,17 +1,17 @@
-import Link from 'next/link'
-import type { Metadata } from 'next'
+import Link from "next/link";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    template: '%s · ClarityOS',
-    default: 'ClarityOS',
+    template: "%s · ClarityOS",
+    default: "ClarityOS",
   },
-}
+};
 
 export default function AuthLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <div className="relative min-h-screen bg-bg-base flex items-center justify-center px-4">
@@ -49,14 +49,12 @@ export default function AuthLayout({
         aria-hidden="true"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 50% 0%, rgba(79,70,229,0.05) 0%, transparent 60%)',
+            "radial-gradient(circle at 50% 0%, rgba(79,70,229,0.05) 0%, transparent 60%)",
         }}
       />
 
       {/* Centered content */}
-      <main className="relative w-full max-w-sm">
-        {children}
-      </main>
+      <main className="relative w-full max-w-sm">{children}</main>
     </div>
-  )
+  );
 }

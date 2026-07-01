@@ -7,13 +7,13 @@
  * Backoff schedule: 0s → 30s → 2m → 10m → 1h (5 max attempts)
  */
 
-import crypto from 'crypto'
-import { connectDB } from '@/lib/db/mongoose'
-import EmailVerificationToken from '@/models/EmailVerificationToken'
-import ProjectInvite from '@/models/ProjectInvite'
-import User from '@/models/User'
-import Project from '@/models/Project'
-import { sendMail } from './sender'
+import crypto from "crypto";
+import { connectDB } from "@/lib/db/mongoose";
+import EmailVerificationToken from "@/models/EmailVerificationToken";
+import ProjectInvite from "@/models/ProjectInvite";
+import User from "@/models/User";
+import Project from "@/models/Project";
+import { sendMail } from "./sender";
 import {
   verificationEmailHtml,
   verificationEmailText,
@@ -25,20 +25,20 @@ import {
   projectInviteEmailText,
   blockerNotificationEmailHtml,
   blockerNotificationEmailText,
-} from './templates'
+} from "./templates";
 
 // Backoff delays in milliseconds
-const BACKOFF_MS = [0, 30_000, 120_000, 600_000, 3_600_000]
-const MAX_ATTEMPTS = BACKOFF_MS.length
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+const BACKOFF_MS = [0, 30_000, 120_000, 600_000, 3_600_000];
+const MAX_ATTEMPTS = BACKOFF_MS.length;
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function hashToken(raw: string): string {
-  return crypto.createHash('sha256').update(raw).digest('hex')
+  return crypto.createHash("sha256").update(raw).digest("hex");
 }
 
 export function generateRawToken(): string {
-  return crypto.randomBytes(32).toString('hex')
+  return crypto.randomBytes(32).toString("hex");
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -49,78 +49,95 @@ export function generateRawToken(): string {
  * Create a verification token and dispatch the first attempt immediately.
  * Returns the token document ID for tracking.
  */
-export async function createAndDispatchVerificationEmail(userId: string, email: string): Promise<void> {
-  await connectDB()
+export async function createAndDispatchVerificationEmail(
+  userId: string,
+  email: string,
+): Promise<void> {
+  await connectDB();
 
   // Mark any existing pending/sent tokens for this user as expired
   await EmailVerificationToken.updateMany(
-    { userId, status: { $in: ['pending', 'sent'] } },
-    { $set: { status: 'expired' } }
-  )
+    { userId, status: { $in: ["pending", "sent"] } },
+    { $set: { status: "expired" } },
+  );
 
-  const raw = generateRawToken()
+  const raw = generateRawToken();
   const tokenDoc = await EmailVerificationToken.create({
-    tokenHash:     hashToken(raw),
+    tokenHash: hashToken(raw),
     userId,
-    email:         email.toLowerCase(),
-    status:        'pending',
-    attempts:      0,
+    email: email.toLowerCase(),
+    status: "pending",
+    attempts: 0,
     nextAttemptAt: new Date(),
-    expiresAt:     new Date(Date.now() + TOKEN_TTL_MS),
-  })
+    expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+  });
 
   // Fire first attempt immediately (non-blocking, retries handled by poller)
-  void attemptDelivery(String(tokenDoc._id), raw)
+  void attemptDelivery(String(tokenDoc._id), raw);
 }
 
 /**
  * Attempt to deliver the verification email.
  * Updates token status and schedules the next retry on failure.
  */
-export async function attemptDelivery(tokenId: string, rawToken: string): Promise<void> {
-  await connectDB()
+export async function attemptDelivery(
+  tokenId: string,
+  rawToken: string,
+): Promise<void> {
+  await connectDB();
 
-  const tokenDoc = await EmailVerificationToken.findById(tokenId)
-  if (!tokenDoc) return
-  if (tokenDoc.status === 'consumed' || tokenDoc.status === 'expired') return
+  const tokenDoc = await EmailVerificationToken.findById(tokenId);
+  if (!tokenDoc) return;
+  if (tokenDoc.status === "consumed" || tokenDoc.status === "expired") return;
   if (new Date() > tokenDoc.expiresAt) {
-    await EmailVerificationToken.findByIdAndUpdate(tokenId, { status: 'expired' })
-    return
+    await EmailVerificationToken.findByIdAndUpdate(tokenId, {
+      status: "expired",
+    });
+    return;
   }
 
-  const attempt = tokenDoc.attempts + 1
-  await EmailVerificationToken.findByIdAndUpdate(tokenId, { attempts: attempt })
+  const attempt = tokenDoc.attempts + 1;
+  await EmailVerificationToken.findByIdAndUpdate(tokenId, {
+    attempts: attempt,
+  });
 
-  const user = await User.findById(tokenDoc.userId).lean() as { name: string } | null
-  const name = user?.name ?? 'there'
+  const user = (await User.findById(tokenDoc.userId).lean()) as {
+    name: string;
+  } | null;
+  const name = user?.name ?? "there";
 
   try {
     await sendMail({
-      to:      tokenDoc.email,
-      subject: 'Verify your ClarityOS account',
-      html:    verificationEmailHtml(name, rawToken),
-      text:    verificationEmailText(name, rawToken),
-    })
-    await EmailVerificationToken.findByIdAndUpdate(tokenId, { status: 'sent' })
+      to: tokenDoc.email,
+      subject: "Verify your ClarityOS account",
+      html: verificationEmailHtml(name, rawToken),
+      text: verificationEmailText(name, rawToken),
+    });
+    await EmailVerificationToken.findByIdAndUpdate(tokenId, { status: "sent" });
   } catch (err) {
-    console.error(`[email-dispatch] Attempt ${attempt} failed for ${tokenDoc.email}:`, err)
+    console.error(
+      `[email-dispatch] Attempt ${attempt} failed for ${tokenDoc.email}:`,
+      err,
+    );
 
     if (attempt >= MAX_ATTEMPTS) {
-      await EmailVerificationToken.findByIdAndUpdate(tokenId, { status: 'expired' })
-      return
+      await EmailVerificationToken.findByIdAndUpdate(tokenId, {
+        status: "expired",
+      });
+      return;
     }
 
-    const nextDelay = BACKOFF_MS[attempt] ?? BACKOFF_MS[BACKOFF_MS.length - 1]
-    const nextAttemptAt = new Date(Date.now() + nextDelay)
+    const nextDelay = BACKOFF_MS[attempt] ?? BACKOFF_MS[BACKOFF_MS.length - 1];
+    const nextAttemptAt = new Date(Date.now() + nextDelay);
     await EmailVerificationToken.findByIdAndUpdate(tokenId, {
-      status:        'pending',
+      status: "pending",
       nextAttemptAt,
-    })
+    });
 
     // Schedule next retry
     setTimeout(() => {
-      void attemptDelivery(tokenId, rawToken)
-    }, nextDelay)
+      void attemptDelivery(tokenId, rawToken);
+    }, nextDelay);
   }
 }
 
@@ -128,21 +145,28 @@ export async function attemptDelivery(tokenId: string, rawToken: string): Promis
  * Validate a raw token from the URL.
  * Returns the userId if valid, null if invalid/expired/consumed.
  */
-export async function validateVerificationToken(rawToken: string): Promise<string | null> {
-  await connectDB()
+export async function validateVerificationToken(
+  rawToken: string,
+): Promise<string | null> {
+  await connectDB();
 
-  const hash = hashToken(rawToken)
-  const tokenDoc = await EmailVerificationToken.findOne({ tokenHash: hash })
-  if (!tokenDoc) return null
-  if (tokenDoc.status === 'consumed' || tokenDoc.status === 'expired') return null
+  const hash = hashToken(rawToken);
+  const tokenDoc = await EmailVerificationToken.findOne({ tokenHash: hash });
+  if (!tokenDoc) return null;
+  if (tokenDoc.status === "consumed" || tokenDoc.status === "expired")
+    return null;
   if (new Date() > tokenDoc.expiresAt) {
-    await EmailVerificationToken.findByIdAndUpdate(tokenDoc._id, { status: 'expired' })
-    return null
+    await EmailVerificationToken.findByIdAndUpdate(tokenDoc._id, {
+      status: "expired",
+    });
+    return null;
   }
 
   // Consume idempotently
-  await EmailVerificationToken.findByIdAndUpdate(tokenDoc._id, { status: 'consumed' })
-  return String(tokenDoc.userId)
+  await EmailVerificationToken.findByIdAndUpdate(tokenDoc._id, {
+    status: "consumed",
+  });
+  return String(tokenDoc.userId);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -153,35 +177,47 @@ export async function validateVerificationToken(rawToken: string): Promise<strin
  * Fire-and-forget: notify the dev inbox when a client creates a new quote.
  */
 export async function dispatchQuoteNotification(opts: {
-  clientName: string
-  clientEmail: string
-  quoteTitle: string
-  description: string
-  budget?: string
-  timeline?: string
-  quoteId: string
+  clientName: string;
+  clientEmail: string;
+  quoteTitle: string;
+  description: string;
+  budget?: string;
+  timeline?: string;
+  quoteId: string;
 }): Promise<void> {
-  const devEmail = process.env.DEV_NOTIFICATION_EMAIL
+  const devEmail = process.env.DEV_NOTIFICATION_EMAIL;
   if (!devEmail) {
-    console.warn('[email-dispatch] DEV_NOTIFICATION_EMAIL not set, skipping quote notification.')
-    return
+    console.warn(
+      "[email-dispatch] DEV_NOTIFICATION_EMAIL not set, skipping quote notification.",
+    );
+    return;
   }
 
   try {
     await sendMail({
-      to:      devEmail,
+      to: devEmail,
       subject: `New Quote Request: "${opts.quoteTitle}" — ClarityOS`,
-      html:    quoteRequestEmailHtml(
-        opts.clientName, opts.clientEmail, opts.quoteTitle,
-        opts.description, opts.budget, opts.timeline, opts.quoteId
+      html: quoteRequestEmailHtml(
+        opts.clientName,
+        opts.clientEmail,
+        opts.quoteTitle,
+        opts.description,
+        opts.budget,
+        opts.timeline,
+        opts.quoteId,
       ),
-      text:    quoteRequestEmailText(
-        opts.clientName, opts.clientEmail, opts.quoteTitle,
-        opts.description, opts.budget, opts.timeline, opts.quoteId
+      text: quoteRequestEmailText(
+        opts.clientName,
+        opts.clientEmail,
+        opts.quoteTitle,
+        opts.description,
+        opts.budget,
+        opts.timeline,
+        opts.quoteId,
       ),
-    })
+    });
   } catch (err) {
-    console.error('[email-dispatch] Failed to send quote notification:', err)
+    console.error("[email-dispatch] Failed to send quote notification:", err);
   }
 }
 
@@ -189,21 +225,34 @@ export async function dispatchQuoteNotification(opts: {
  * Fire-and-forget: notify the client when the dev replies to their quote.
  */
 export async function dispatchQuoteReply(opts: {
-  clientEmail: string
-  clientName: string
-  quoteTitle: string
-  devReply: string
-  quoteId: string
+  clientEmail: string;
+  clientName: string;
+  quoteTitle: string;
+  devReply: string;
+  quoteId: string;
 }): Promise<void> {
   try {
     await sendMail({
-      to:      opts.clientEmail,
+      to: opts.clientEmail,
       subject: `Response to your quote "${opts.quoteTitle}" — ClarityOS`,
-      html:    quoteReplyEmailHtml(opts.clientName, opts.quoteTitle, opts.devReply, opts.quoteId),
-      text:    quoteReplyEmailText(opts.clientName, opts.quoteTitle, opts.devReply, opts.quoteId),
-    })
+      html: quoteReplyEmailHtml(
+        opts.clientName,
+        opts.quoteTitle,
+        opts.devReply,
+        opts.quoteId,
+      ),
+      text: quoteReplyEmailText(
+        opts.clientName,
+        opts.quoteTitle,
+        opts.devReply,
+        opts.quoteId,
+      ),
+    });
   } catch (err) {
-    console.error('[email-dispatch] Failed to send quote reply notification:', err)
+    console.error(
+      "[email-dispatch] Failed to send quote reply notification:",
+      err,
+    );
   }
 }
 
@@ -217,58 +266,73 @@ export async function dispatchQuoteReply(opts: {
  * Returns the raw token URL for manual sharing.
  */
 export async function createAndDispatchProjectInvite(opts: {
-  projectId: string
-  projectName: string
-  targetEmail: string
-  sendEmail?: boolean
+  projectId: string;
+  projectName: string;
+  targetEmail: string;
+  sendEmail?: boolean;
 }): Promise<{ inviteUrl: string; emailSent: boolean; emailError?: string }> {
-  await connectDB()
+  await connectDB();
 
-  const targetEmail = opts.targetEmail.toLowerCase().trim()
+  const targetEmail = opts.targetEmail.toLowerCase().trim();
 
   // Expire any existing pending invites for this project+email combo
   await ProjectInvite.updateMany(
-    { projectId: opts.projectId, email: targetEmail, status: 'pending' },
-    { $set: { status: 'expired' } }
-  )
+    { projectId: opts.projectId, email: targetEmail, status: "pending" },
+    { $set: { status: "expired" } },
+  );
 
-  const raw = generateRawToken()
-  const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-  const inviteUrl = `${APP_URL}/invite?token=${encodeURIComponent(raw)}`
+  const raw = generateRawToken();
+  const APP_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const inviteUrl = `${APP_URL}/invite?token=${encodeURIComponent(raw)}`;
 
-  let emailSent = false
-  let emailError: string | undefined
+  let emailSent = false;
+  let emailError: string | undefined;
 
   if (opts.sendEmail !== false) {
     // Try to find a name for personalisation
-    const user = await User.findOne({ email: targetEmail }).lean() as { name?: string } | null
-    const clientName = user?.name ?? ''
+    const user = (await User.findOne({ email: targetEmail }).lean()) as {
+      name?: string;
+    } | null;
+    const clientName = user?.name ?? "";
 
     try {
       await sendMail({
-        to:      targetEmail,
+        to: targetEmail,
         subject: `You've been invited to "${opts.projectName}" — ClarityOS`,
-        html:    projectInviteEmailHtml(clientName, opts.projectName, raw, targetEmail),
-        text:    projectInviteEmailText(clientName, opts.projectName, raw, targetEmail),
-      })
-      emailSent = true
+        html: projectInviteEmailHtml(
+          clientName,
+          opts.projectName,
+          raw,
+          targetEmail,
+        ),
+        text: projectInviteEmailText(
+          clientName,
+          opts.projectName,
+          raw,
+          targetEmail,
+        ),
+      });
+      emailSent = true;
     } catch (err: any) {
-      console.error('[email-dispatch] Failed to send project invite email:', err)
-      emailError = err?.message || String(err)
+      console.error(
+        "[email-dispatch] Failed to send project invite email:",
+        err,
+      );
+      emailError = err?.message || String(err);
     }
   }
 
   await ProjectInvite.create({
     projectId: opts.projectId,
-    email:     targetEmail,
+    email: targetEmail,
     tokenHash: hashToken(raw),
-    status:    'pending',
+    status: "pending",
     expiresAt: new Date(Date.now() + INVITE_TTL_MS),
     emailSent,
-    emailError
-  })
+    emailError,
+  });
 
-  return { inviteUrl, emailSent, emailError }
+  return { inviteUrl, emailSent, emailError };
 }
 
 /**
@@ -277,31 +341,31 @@ export async function createAndDispatchProjectInvite(opts: {
  * Returns { projectId } on success, throws on failure.
  */
 export async function acceptProjectInvite(opts: {
-  rawToken: string
-  loggedInEmail: string
+  rawToken: string;
+  loggedInEmail: string;
 }): Promise<{ projectId: string }> {
-  await connectDB()
+  await connectDB();
 
-  const hash = hashToken(opts.rawToken)
-  const invite = await ProjectInvite.findOne({ tokenHash: hash })
+  const hash = hashToken(opts.rawToken);
+  const invite = await ProjectInvite.findOne({ tokenHash: hash });
 
-  if (!invite) throw new Error('INVITE_NOT_FOUND')
-  if (invite.status === 'accepted') throw new Error('INVITE_ALREADY_ACCEPTED')
-  if (invite.status === 'expired') throw new Error('INVITE_EXPIRED')
+  if (!invite) throw new Error("INVITE_NOT_FOUND");
+  if (invite.status === "accepted") throw new Error("INVITE_ALREADY_ACCEPTED");
+  if (invite.status === "expired") throw new Error("INVITE_EXPIRED");
   if (new Date() > invite.expiresAt) {
-    await ProjectInvite.findByIdAndUpdate(invite._id, { status: 'expired' })
-    throw new Error('INVITE_EXPIRED')
+    await ProjectInvite.findByIdAndUpdate(invite._id, { status: "expired" });
+    throw new Error("INVITE_EXPIRED");
   }
 
   // ─── Critical security check: email must match ───────────────────────────
   if (invite.email !== opts.loggedInEmail.toLowerCase().trim()) {
-    throw new Error('INVITE_EMAIL_MISMATCH')
+    throw new Error("INVITE_EMAIL_MISMATCH");
   }
 
   // Consume the invite
-  await ProjectInvite.findByIdAndUpdate(invite._id, { status: 'accepted' })
+  await ProjectInvite.findByIdAndUpdate(invite._id, { status: "accepted" });
 
-  return { projectId: String(invite.projectId) }
+  return { projectId: String(invite.projectId) };
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -313,37 +377,47 @@ export async function acceptProjectInvite(opts: {
  * on one of their projects, so they're never left in the dark.
  */
 export async function dispatchBlockerNotification(opts: {
-  projectId: string
-  blockerTitle: string
-  explanation: string
-  type: string
+  projectId: string;
+  blockerTitle: string;
+  explanation: string;
+  type: string;
 }): Promise<void> {
   try {
-    await connectDB()
+    await connectDB();
 
-    const project = await Project.findById(opts.projectId).lean() as {
-      name: string
-      clientId?: string
-    } | null
-    if (!project?.clientId) return
+    const project = (await Project.findById(opts.projectId).lean()) as {
+      name: string;
+      clientId?: string;
+    } | null;
+    if (!project?.clientId) return;
 
-    const client = await User.findById(project.clientId).lean() as {
-      name?: string
-      email?: string
-    } | null
-    if (!client?.email) return
+    const client = (await User.findById(project.clientId).lean()) as {
+      name?: string;
+      email?: string;
+    } | null;
+    if (!client?.email) return;
 
     await sendMail({
-      to:      client.email,
+      to: client.email,
       subject: `Blocker on "${project.name}" — ClarityOS`,
-      html:    blockerNotificationEmailHtml(
-        client.name ?? '', project.name, opts.blockerTitle, opts.explanation, opts.type, opts.projectId
+      html: blockerNotificationEmailHtml(
+        client.name ?? "",
+        project.name,
+        opts.blockerTitle,
+        opts.explanation,
+        opts.type,
+        opts.projectId,
       ),
-      text:    blockerNotificationEmailText(
-        client.name ?? '', project.name, opts.blockerTitle, opts.explanation, opts.type, opts.projectId
+      text: blockerNotificationEmailText(
+        client.name ?? "",
+        project.name,
+        opts.blockerTitle,
+        opts.explanation,
+        opts.type,
+        opts.projectId,
       ),
-    })
+    });
   } catch (err) {
-    console.error('[email-dispatch] Failed to send blocker notification:', err)
+    console.error("[email-dispatch] Failed to send blocker notification:", err);
   }
 }

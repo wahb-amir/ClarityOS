@@ -1,19 +1,24 @@
-import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
-import './globals.css'
+import type { Metadata } from "next";
+import { Geist } from "next/font/google";
+import "./globals.css";
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 export const metadata: Metadata = {
   title: {
-    default:  'ClarityOS — Client Transparency System',
-    template: '%s | ClarityOS',
+    default: "ClarityOS — Client Transparency System",
+    template: "%s | ClarityOS",
   },
-  description: 'Real-time project clarity for clients and developers. No more "what\'s the update?" messages.',
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
-}
+  description:
+    'Real-time project clarity for clients and developers. No more "what\'s the update?" messages.',
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={geist.variable}>
       <body>
@@ -26,5 +31,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main-content">{children}</main>
       </body>
     </html>
-  )
+  );
 }

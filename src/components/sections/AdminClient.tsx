@@ -1,39 +1,41 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { usePathname } from 'next/navigation'
-import { DevQuotes } from '@/components/sections/DevQuotes'
-import { AdminSidebar } from '../admin/AdminSidebar'
-import { CreateProjectPanel } from '../admin/CreateProjectPanel'
-import { Project, GlobalPanel } from '@/types/admin'
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { DevQuotes } from "@/components/sections/DevQuotes";
+import { AdminSidebar } from "../admin/AdminSidebar";
+import { CreateProjectPanel } from "../admin/CreateProjectPanel";
+import { Project, GlobalPanel } from "@/types/admin";
 
 export function AdminClient() {
-  const pathname = usePathname()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [globalPanel, setGlobalPanel] = useState<GlobalPanel | null>('project')
-  const [success, setSuccess] = useState('')
+  const pathname = usePathname();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [globalPanel, setGlobalPanel] = useState<GlobalPanel | null>("project");
+  const [success, setSuccess] = useState("");
 
-  const activeProjectId = pathname.startsWith('/project/') ? pathname.split('/')[2] ?? null : null
+  const activeProjectId = pathname.startsWith("/project/")
+    ? (pathname.split("/")[2] ?? null)
+    : null;
 
   const fetchProjects = useCallback(() => {
-    fetch('/api/projects')
-      .then(r => r.json())
-      .then(d => setProjects(Array.isArray(d) ? d : []))
-  }, [])
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((d) => setProjects(Array.isArray(d) ? d : []));
+  }, []);
 
   useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+    fetchProjects();
+  }, [fetchProjects]);
 
   const notify = (msg: string) => {
-    setSuccess(msg)
-    setTimeout(() => setSuccess(''), 3000)
-  }
+    setSuccess(msg);
+    setTimeout(() => setSuccess(""), 3000);
+  };
 
   const handleSelectGlobal = (panel: GlobalPanel) => {
-    setGlobalPanel(panel)
-  }
+    setGlobalPanel(panel);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -59,7 +61,7 @@ export function AdminClient() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {globalPanel === 'project' && (
+          {globalPanel === "project" && (
             <motion.div
               key="new-project"
               initial={{ opacity: 0, y: 8 }}
@@ -71,7 +73,7 @@ export function AdminClient() {
             </motion.div>
           )}
 
-          {(globalPanel === 'quotes' || globalPanel === 'invite') && (
+          {(globalPanel === "quotes" || globalPanel === "invite") && (
             <motion.div
               key="quotes-invite"
               initial={{ opacity: 0, y: 8 }}
@@ -79,11 +81,13 @@ export function AdminClient() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <DevQuotes initialPanel={globalPanel === 'invite' ? 'invite' : 'quotes'} />
+              <DevQuotes
+                initialPanel={globalPanel === "invite" ? "invite" : "quotes"}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }
