@@ -15,6 +15,7 @@ export interface QueuedActivity {
   rawText: string
   humanText: string
   internal: boolean
+  published?: boolean
   metadata?: Record<string, string>
   createdAt: string
 }
