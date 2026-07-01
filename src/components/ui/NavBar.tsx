@@ -18,9 +18,12 @@ export function NavBar({ role, userName, className }: NavBarProps) {
 
   const isDev = role === 'dev'
 
+  const isProjectPage = pathname.startsWith('/project/')
+
   const navLinks = isDev
     ? [
-        { href: '/admin',     label: 'All Projects' },
+        { href: '/admin', label: 'All Projects' },
+        ...(isProjectPage ? [{ href: pathname, label: 'Project' }] : []),
       ]
     : [
         { href: '/dashboard', label: 'My Projects' },
