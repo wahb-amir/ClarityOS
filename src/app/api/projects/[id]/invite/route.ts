@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { connectDB } from '@/lib/db/mongoose'
 import { createAndDispatchProjectInvite } from '@/lib/email/dispatch'
 import Project from '@/models/Project'
+import ProjectInvite from '@/models/ProjectInvite'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -32,12 +33,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 })
   }
 
-  const { inviteUrl } = await createAndDispatchProjectInvite({
+  // Check if invitation already exists
+  const existingInvite = await ProjectInvite.findOne({
+    projectId: id,
+    email: email,
+    status: { $in: ['pending', 'accepted'] }
+  })
+
+  let isResend = false
+  if (existingInvite) {
+    isResend = true
+  }
+
+  const { inviteUrl, emailSent, emailError } = await createAndDispatchProjectInvite({
     projectId:   id,
     projectName: (project as { name: string }).name,
     targetEmail: email,
-    sendEmail:   body.sendEmail !== false,
+    sendEmail:   isResend ? false : (body.sendEmail !== false),
   })
 
-  return NextResponse.json({ inviteUrl })
+  return NextResponse.json({
+    inviteUrl,
+    alreadyInvited: isResend,
+    emailSent: isResend ? false : emailSent,
+    emailError
+  })
 }

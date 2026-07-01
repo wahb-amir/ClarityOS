@@ -7,6 +7,8 @@ export interface IProjectInvite extends Document {
   tokenHash: string
   status: 'pending' | 'accepted' | 'expired'
   expiresAt: Date
+  emailSent: boolean
+  emailError?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -18,6 +20,8 @@ const ProjectInviteSchema = new Schema<IProjectInvite>(
     tokenHash: { type: String, required: true, unique: true },
     status:    { type: String, enum: ['pending', 'accepted', 'expired'], default: 'pending' },
     expiresAt: { type: Date, required: true },
+    emailSent: { type: Boolean, default: false },
+    emailError:{ type: String, required: false }
   },
   { timestamps: true }
 )

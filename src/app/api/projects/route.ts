@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { connectDB } from '@/lib/db/mongoose'
 import Project from '@/models/Project'
+import ProjectInvite from '@/models/ProjectInvite'
 import crypto from 'crypto'
 
 export async function GET() {
@@ -23,7 +24,26 @@ export async function GET() {
   }
 
   const projects = await Project.find(filter).sort({ createdAt: -1 }).lean()
-  return NextResponse.json(projects)
+  
+  const User = (await import('@/models/User')).default
+  
+  const enhancedProjects = await Promise.all(projects.map(async (project: any) => {
+    const clientQuery = project.clientId
+      ? { $or: [{ _id: project.clientId }, { role: 'client', assignedProjects: project._id }] }
+      : { role: 'client', assignedProjects: project._id }
+      
+    const clients = await User.find(clientQuery).select('name').lean()
+    const invites = await ProjectInvite.find({ projectId: project._id }).lean()
+    
+    const acceptedClientNames = clients.map((c: any) => c.name).filter(Boolean)
+    const pendingInvites = invites.filter((i: any) => i.status === 'pending').map((i: any) => i.email)
+    const allClientNames = [...acceptedClientNames, ...pendingInvites]
+    const clientName = allClientNames.length > 0 ? allClientNames.join(', ') : 'No clients yet'
+    
+    return { ...project, clientName, clients, invites }
+  }))
+
+  return NextResponse.json(enhancedProjects)
 }
 
 export async function POST(req: NextRequest) {
@@ -51,6 +71,11 @@ export async function POST(req: NextRequest) {
     repoUrl:       repoUrl || undefined,
     deployUrl:     deployUrl || undefined,
     webhookSecret: crypto.randomBytes(24).toString('hex'),
+  })
+
+  const User = (await import('@/models/User')).default
+  await User.findByIdAndUpdate(session.user.id, {
+    $addToSet: { assignedProjects: project._id }
   })
 
   return NextResponse.json(project, { status: 201 })

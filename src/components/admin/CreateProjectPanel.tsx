@@ -17,7 +17,6 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
   const [pForm, setPForm] = useState({
     name: '',
     description: '',
-    clientName: '',
     status: 'active',
     repoUrl: '',
     deployUrl: '',
@@ -51,7 +50,7 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
   }
 
   const finishAndReset = () => {
-    setPForm({ name: '', description: '', clientName: '', status: 'active', repoUrl: '', deployUrl: '', vercelProjectId: '' })
+    setPForm({ name: '', description: '', status: 'active', repoUrl: '', deployUrl: '', vercelProjectId: '' })
     setCreatedProject(null)
   }
 
@@ -88,7 +87,7 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
       <h2 className="text-text-primary font-semibold mb-5">Create New Project</h2>
       <div className="space-y-6">
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className={labelClass}>Project Name *</label>
             <input
@@ -96,15 +95,6 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
               placeholder="e.g. E-commerce Platform"
               value={pForm.name}
               onChange={e => setPForm(f => ({ ...f, name: e.target.value }))}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Client Name *</label>
-            <input
-              className={inputClass}
-              placeholder="e.g. Acme Corp"
-              value={pForm.clientName}
-              onChange={e => setPForm(f => ({ ...f, clientName: e.target.value }))}
             />
           </div>
         </div>
@@ -168,7 +158,7 @@ export function CreateProjectPanel({ onNotify, onSuccess }: CreateProjectPanelPr
           <Button
             onClick={createProject}
             isLoading={loading}
-            disabled={!pForm.name || !pForm.clientName || !pForm.description}
+            disabled={!pForm.name || !pForm.description}
             className="w-full sm:w-auto"
           >
             Create Project

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { connectDB } from '@/lib/db/mongoose'
 import Project from '@/models/Project'
+import ProjectInvite from '@/models/ProjectInvite'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -30,7 +31,28 @@ export async function GET(req: NextRequest, context: RouteContext) {
   const project = await getProjectWithAccess(id, session.user.id!, session.user.role!)
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  return NextResponse.json(project)
+  const User = (await import('@/models/User')).default
+
+  const devs = await User.find({ role: 'dev', assignedProjects: id })
+    .select('name email image role')
+    .lean()
+
+  const clientQuery = project.clientId
+    ? { $or: [{ _id: project.clientId }, { role: 'client', assignedProjects: id }] }
+    : { role: 'client', assignedProjects: id }
+
+  const clients = await User.find(clientQuery)
+    .select('name email image role')
+    .lean()
+
+  const invites = await ProjectInvite.find({ projectId: id }).lean()
+  
+  const acceptedClientNames = clients.map((c: any) => c.name).filter(Boolean)
+  const pendingInvites = invites.filter((i: any) => i.status === 'pending').map((i: any) => i.email)
+  const allClientNames = [...acceptedClientNames, ...pendingInvites]
+  const clientName = allClientNames.length > 0 ? allClientNames.join(', ') : 'No clients yet'
+
+  return NextResponse.json({ ...project, devs, clients, invites, clientName })
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
